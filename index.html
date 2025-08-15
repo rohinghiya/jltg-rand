@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jet Lag: Hide & Seek — Randomizer</title>
+  <style>
+    :root{
+      --bg:#07111c;
+      --card:#0f2033aa;
+      --muted:#a7b4c7;
+      --text:#eaf2ff;
+      --accentA:#00e0ff;
+      --accentB:#ff3ea5;
+      --accentC:#ffe066;
+      --ok:#3ddc97;
+      --danger:#ff5c77;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color:var(--text);
+      background:linear-gradient(180deg, #081524, #050c15);
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      padding:16px;
+    }
+    header{
+      display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;margin-bottom:16px;
+    }
+    .logo{
+      width:60px;height:60px;border-radius:12px;display:grid;place-items:center;
+      background: conic-gradient(from 210deg, var(--accentA), var(--accentB));
+      font-weight:900;color:#001018;box-shadow:var(--shadow);
+    }
+    h1{font-size:1.4rem;font-weight:800}
+    p{color:var(--muted);font-size:0.9rem}
+    .pill{padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:0.75rem;margin-top:4px}
+    .card{
+      background:rgba(12,25,40,.55);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(8px);
+      margin-bottom:16px;
+      padding:16px;
+      width:100%;
+    }
+    label{font-size:0.85rem;color:#b7c5db;margin-bottom:4px;display:block}
+    select,input,button{
+      width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+      background:#0a1827;color:var(--text);font-size:1rem;margin-bottom:12px;
+    }
+    button{
+      cursor:pointer;font-weight:700;transition:transform .06s ease;
+    }
+    button:active{transform:scale(0.98)}
+    .btn-primary{background:linear-gradient(135deg, var(--accentA), var(--accentB));color:#07111c;border:none}
+    .btn-outline{background:transparent;border:1.5px solid rgba(255,255,255,.18)}
+    .chip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0a1827;border:1px solid rgba(255,255,255,.08);font-size:0.75rem;color:#cfe2ff}
+    #history{display:grid;gap:8px;font-size:0.9rem;margin-top:10px}
+    .muted{color:var(--muted)}
+    .footer{text-align:center;color:#8ea3bd;font-size:0.75rem;margin-top:auto}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">JL</div>
+    <h1>Jet Lag: Hide & Seek — Randomizer</h1>
+    <p>Choose a section ➜ select the card you played ➜ draw a new random card (excluding your original).</p>
+    <div class="pill">Inspired by Jet Lag: The Game</div>
+  </header>
+
+  <div class="card">
+    <label for="section">Section</label>
+    <select id="section"></select>
+
+    <label for="original">Original Question</label>
+    <select id="original"></select>
+
+    <div id="customInputRow" class="hidden">
+      <label for="customValue">Custom value (Radar)</label>
+      <input id="customValue" type="text" placeholder="e.g., 22km" />
+    </div>
+
+    <button id="drawBtn" class="btn-primary">🎲 Draw New Random Card</button>
+    <button id="copyBtn" class="btn-outline">📋 Copy Result</button>
+  </div>
+
+  <div class="card">
+    <small class="muted">Result</small>
+    <h3 id="resultText">Nothing drawn yet.</h3>
+    <div class="chip" id="badgeSection">Section: —</div>
+    <div class="chip" id="badgeAvoiding">Avoiding original</div>
+    <div id="history"><div class="muted">History will appear here.</div></div>
+  </div>
+
+  <div class="footer">Fan-made for friendly play. Not affiliated with the official creators.</div>
+
+  <script>
+    const DATA = {
+      Matching:{template:"Is your nearest {opt} the same as my nearest {opt}?",options:["Commercial Airport","Transit Line","Station's Name Length","Street or Path","International border (Wales or France)","1st Admin: NW/NE/SW/SE","2nd Admin: Tube Zone 1-6","3rd Admin: Counties","4th Admin: Boroughs","Park","Amusement Park","Zoo","Aquarium","Golf Course","Museum","Movie Theatre","Hospital","Library","Foreign Consulate"]},
+      Measuring:{template:"Compared to me, are you closer to or further from {opt}?",options:["A Commercial Airport","A Rail Station","A Border (Wales border or French Coast)","Sea Level (Use compass app)","The Coast","A Park","An Amusement Park","A Zoo","An Aquarium","A Gold Course","A Museum","A Movie Theatre","A Hospital","A Library","A Foreign Consulate"]},
+      Thermometer:{template:"I just travelled (at least) {opt}. Am I hotter or colder?",options:["1km","5km","1km","5km","15km"]},
+      Radar:{template:"Are you within {opt} of me?",options:["500m","1km","2km","5km","10km","15km","40km","Custom"]},
+      Tentacles:{template:"Of all the {opt} within 2km of me, which are you closest to?",options:["Museums","Libraries","Movie Theatres","Hospitals"]},
+      Photo:{template:"Send a photo of {opt}.",options:["A Tree","The Sky","You","Widest Street — Must include both sides of the street","Tallest Structure in your sightline — Must include top and both sides; top must be in the top 1/3rd of frame","Any Building visible from station — Must stand directly outside transit station entrance. If multiple entrances you may choose. Must include roof, both sides, with the top of the building in the top 1/3rd of frame","Tallest Building visible from station — Tallest from your perspective / sightline.","Trace Nearest Street/Path","Two Buildings","Restaurant Interior","Train Platform","Park","Grocery Store Aisle","Place of Worship"]}
+    };
+    const sectionEl=document.getElementById('section');
+    const originalEl=document.getElementById('original');
+    const drawBtn=document.getElementById('drawBtn');
+    const copyBtn=document.getElementById('copyBtn');
+    const resultText=document.getElementById('resultText');
+    const historyEl=document.getElementById('history');
+    const badgeSection=document.getElementById('badgeSection');
+    const badgeAvoiding=document.getElementById('badgeAvoiding');
+    const customInputRow=document.getElementById('customInputRow');
+    const customValueEl=document.getElementById('customValue');
+
+    function buildQuestions(section){
+      const {template,options}=DATA[section];
+      return options.map(opt=> opt==='Custom'? template.replace('{opt}','<custom>') : template.replaceAll('{opt}',opt));
+    }
+    function populateSections(){
+      Object.keys(DATA).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;sectionEl.appendChild(o);});
+    }
+    function populateOriginal(){
+      originalEl.innerHTML='';
+      buildQuestions(sectionEl.value).forEach(q=>{const o=document.createElement('option');o.value=q;o.textContent=q;originalEl.appendChild(o);});
+      toggleCustomRow();
+    }
+    function toggleCustomRow(){customInputRow.classList.toggle('hidden',!originalEl.value.includes('<custom>'))}
+    function drawNew(){
+      const section=sectionEl.value;
+      let original=originalEl.value;
+      if(original.includes('<custom>')){
+        const cv=customValueEl.value.trim();
+        if(!cv){alert('Enter a custom value.');return;}
+        original=original.replace('<custom>',cv);
+      }
+      const candidates=buildQuestions(section).map(q=>q.replace('<custom>','Custom value')).filter(q=>q!==original);
+      if(!candidates.length){alert('No alternatives available.');return;}
+      const pick=candidates[Math.floor(Math.random()*candidates.length)];
+      resultText.textContent=pick;
+      badgeSection.textContent='Section: '+section;
+      badgeAvoiding.textContent='Avoided: '+original;
+      const row=document.createElement('div');row.textContent=`${new Date().toLocaleTimeString()} — ${pick}`;historyEl.prepend(row);
+    }
+    function copyResult(){navigator.clipboard.writeText(`Section: ${sectionEl.value}\n${resultText.textContent}`).then(()=>{copyBtn.textContent='✅ Copied!';setTimeout(()=>copyBtn.textContent='📋 Copy Result',1200);});}
+    populateSections();
+    populateOriginal();
+    sectionEl.addEventListener('change',populateOriginal);
+    originalEl.addEventListener('change',toggleCustomRow);
+    drawBtn.addEventListener('click',drawNew);
+    copyBtn.addEventListener('click',copyResult);
+  </script>
+</body>
+</html>
