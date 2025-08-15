@@ -35,6 +35,10 @@
       width:60px;height:60px;border-radius:12px;display:grid;place-items:center;
       background: conic-gradient(from 210deg, var(--accentA), var(--accentB));
       font-weight:900;color:#001018;box-shadow:var(--shadow);
+      transition: transform 0.6s ease;
+    }
+    .logo.roll{
+      transform: rotate(360deg);
     }
     h1{font-size:1.4rem;font-weight:800}
     p{color:var(--muted);font-size:0.9rem}
@@ -65,14 +69,36 @@
     .muted{color:var(--muted)}
     .footer{text-align:center;color:#8ea3bd;font-size:0.75rem;margin-top:auto}
     .hidden{display:none}
+
+    .modal{
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:rgba(0,0,0,0.75);display:flex;justify-content:center;align-items:center;
+      z-index:1000;display:none;
+      animation: fadeIn 0.3s ease;
+    }
+    .modal-content{
+      background:var(--card);padding:20px;border-radius:var(--radius);max-width:400px;width:90%;position:relative;
+      transform: translateY(-50px);
+      opacity: 0;
+      animation: slideIn 0.3s forwards;
+    }
+    .modal h2{margin-bottom:12px;font-size:1.2rem;text-decoration:underline;}
+    .modal ul{margin-left:20px;margin-bottom:12px}
+    .done-btn{
+      cursor:pointer;background:var(--accentB);color:#07111c;border:none;padding:8px 12px;border-radius:12px;font-weight:700;margin-top:12px;
+    }
+
+    @keyframes slideIn { to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">JL</div>
+    <div class="logo" id="logo">JL</div>
     <h1>Jet Lag: Hide & Seek — Randomizer</h1>
     <p>Choose a section ➜ select the card you played ➜ draw a new random card (excluding your original).</p>
     <div class="pill">Inspired by Jet Lag: The Game</div>
+    <button id="howToBtn" class="btn-outline">How to Use</button>
   </header>
 
   <div class="card">
@@ -101,6 +127,19 @@
 
   <div class="footer">Fan-made for friendly play. Not affiliated with the official creators.</div>
 
+  <div class="modal" id="howToModal">
+    <div class="modal-content">
+      <h2>How to Use:</h2>
+      <ul>
+        <li>Select your question type in the first box</li>
+        <li>In the box below select your original question</li>
+        <li>Click 'Draw New Random Question'</li>
+        <li>Scroll down and see new question</li>
+      </ul>
+      <button class="done-btn" id="modalCloseDone">Done</button>
+    </div>
+  </div>
+
   <script>
     const DATA = {
       Matching:{template:"Is your nearest {opt} the same as my nearest {opt}?",options:["Commercial Airport","Transit Line","Station's Name Length","Street or Path","International border (Wales or France)","1st Admin: NW/NE/SW/SE","2nd Admin: Tube Zone 1-6","3rd Admin: Counties","4th Admin: Boroughs","Park","Amusement Park","Zoo","Aquarium","Golf Course","Museum","Movie Theatre","Hospital","Library","Foreign Consulate"]},
@@ -110,6 +149,7 @@
       Tentacles:{template:"Of all the {opt} within 2km of me, which are you closest to?",options:["Museums","Libraries","Movie Theatres","Hospitals"]},
       Photo:{template:"Send a photo of {opt}.",options:["A Tree","The Sky","You","Widest Street — Must include both sides of the street","Tallest Structure in your sightline — Must include top and both sides; top must be in the top 1/3rd of frame","Any Building visible from station — Must stand directly outside transit station entrance. If multiple entrances you may choose. Must include roof, both sides, with the top of the building in the top 1/3rd of frame","Tallest Building visible from station — Tallest from your perspective / sightline.","Trace Nearest Street/Path","Two Buildings","Restaurant Interior","Train Platform","Park","Grocery Store Aisle","Place of Worship"]}
     };
+
     const sectionEl=document.getElementById('section');
     const originalEl=document.getElementById('original');
     const drawBtn=document.getElementById('drawBtn');
@@ -120,21 +160,41 @@
     const badgeAvoiding=document.getElementById('badgeAvoiding');
     const customInputRow=document.getElementById('customInputRow');
     const customValueEl=document.getElementById('customValue');
+    const logoEl=document.getElementById('logo');
 
     function buildQuestions(section){
       const {template,options}=DATA[section];
       return options.map(opt=> opt==='Custom'? template.replace('{opt}','<custom>') : template.replaceAll('{opt}',opt));
     }
+
     function populateSections(){
-      Object.keys(DATA).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;sectionEl.appendChild(o);});
+      Object.keys(DATA).forEach(k=>{
+        const o=document.createElement('option');
+        o.value=k;
+        o.textContent=k;
+        sectionEl.appendChild(o);
+      });
     }
+
     function populateOriginal(){
       originalEl.innerHTML='';
-      buildQuestions(sectionEl.value).forEach(q=>{const o=document.createElement('option');o.value=q;o.textContent=q;originalEl.appendChild(o);});
+      buildQuestions(sectionEl.value).forEach(q=>{
+        const o=document.createElement('option');
+        o.value=q;
+        o.textContent=q;
+        originalEl.appendChild(o);
+      });
       toggleCustomRow();
     }
-    function toggleCustomRow(){customInputRow.classList.toggle('hidden',!originalEl.value.includes('<custom>'))}
+
+    function toggleCustomRow(){
+      customInputRow.classList.toggle('hidden',!originalEl.value.includes('<custom>'))
+    }
+
     function drawNew(){
+      logoEl.classList.add('roll');
+      setTimeout(()=>{logoEl.classList.remove('roll');},600);
+
       const section=sectionEl.value;
       let original=originalEl.value;
       if(original.includes('<custom>')){
@@ -148,15 +208,40 @@
       resultText.textContent=pick;
       badgeSection.textContent='Section: '+section;
       badgeAvoiding.textContent='Avoided: '+original;
-      const row=document.createElement('div');row.textContent=`${new Date().toLocaleTimeString()} — ${pick}`;historyEl.prepend(row);
+      const row=document.createElement('div');
+      row.textContent=`${new Date().toLocaleTimeString()} — ${pick}`;
+      historyEl.prepend(row);
     }
-    function copyResult(){navigator.clipboard.writeText(`Section: ${sectionEl.value}\n${resultText.textContent}`).then(()=>{copyBtn.textContent='✅ Copied!';setTimeout(()=>copyBtn.textContent='📋 Copy Result',1200);});}
+
+    // Safe copy function using fallback
+    function copyResult(){
+      try {
+        navigator.clipboard.writeText(`Section: ${sectionEl.value}\n${resultText.textContent}`)
+          .then(()=>{copyBtn.textContent='✅ Copied!';setTimeout(()=>copyBtn.textContent='📋 Copy Result',1200);})
+          .catch(()=>{alert('Clipboard access denied. Please copy manually.');});
+      } catch (e) {
+        alert('Clipboard access blocked. Please copy manually.');
+      }
+    }
+
     populateSections();
     populateOriginal();
     sectionEl.addEventListener('change',populateOriginal);
     originalEl.addEventListener('change',toggleCustomRow);
     drawBtn.addEventListener('click',drawNew);
     copyBtn.addEventListener('click',copyResult);
+
+    // Modal JS
+    const howToBtn=document.getElementById('howToBtn');
+    const howToModal=document.getElementById('howToModal');
+    const modalCloseDone=document.getElementById('modalCloseDone');
+
+    howToBtn.addEventListener('click',()=>{
+      howToModal.style.display='flex';
+      const modalContent = howToModal.querySelector('.modal-content');
+      modalContent.style.animation = 'slideIn 0.3s forwards';
+    });
+    modalCloseDone.addEventListener('click',()=>{howToModal.style.display='none';});
   </script>
 </body>
 </html>
